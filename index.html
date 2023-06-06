@@ -556,123 +556,7 @@
             }
         }
 
-        function append_json_download_link(json, append_to_selector, file_name, button_phrase) {
-            if (typeof (json) !== 'string') {
-                json = JSON.stringify(json);
-            }
-
-            const url = json_to_url(json, 'octet/stream');
-            const link = document.createElement('a');
-            link.className = 'btn btn-primary btn-outline labeled';
-            link.href = url;
-            link.target = "_blank";
-            link.download = file_name + '.json';
-            link.innerHTML = '<i class="fal fa-arrow-to-bottom"></i>' + button_phrase;
-
-            $(append_to_selector).append(link);
-            $(append_to_selector).append(' ');
-        }
-
-        function json_to_url(json, mimeType) {
-            return URL.createObjectURL(new Blob([json], {type: mimeType}))
-        }
-
-        function encrypt_file_base64(base64) {
-            // generate a random key and IV
-            const aes_config = {
-                key: forge.random.getBytesSync(16),
-                iv: forge.random.getBytesSync(8)
-            };
-
-            // encrypt
-            const cipher = forge.aes.createEncryptionCipher(aes_config.key);
-            cipher.start(aes_config.iv);
-            cipher.update(forge.util.createBuffer(base64));
-            cipher.finish();
-            const encrypted = cipher.output;
-            const encrypted_hex = encrypted.toHex();
-            const pki = forge.pki;
-            // convert a PEM-formatted public key to a Forge public key
-            const public_key = pki.publicKeyFromPem(`-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0hSCBgxkeRelUhaC8Qui
-c82NahsZrWK7eCCO5+xOJHo5dblz+90ZAlz1NJx6H227rnm/yjba0BrTTLlHiuPU
-NAoS+vT0m5HwSiOKe0BZNUUWJlYotkj3qoNTioD2OSfEZxA4L9UugGJnoENHzqzR
-19SNSjvapkDWVtVoZSFUZQHvS850L6Gx9KXfVVPIhsOHrEQAbW+2rkYj3cVnqQlk
-yxI1sqYrfb5DrireZYRVcZfuhs+cARmCczh/lnB4+XvFsUnvlP+AtAU9c9ft8Gzt
-bH0E3mUigJWJtuv94yqULvZdW/KKxJM3+3PDL2tkH8sgIZSTj1U5cVjcFHZNv1zx
-zQIDAQAB
------END PUBLIC KEY-----`);
-
-            const aes_config_hex = {
-                key: forge.util.bytesToHex(aes_config.key),
-                iv: forge.util.bytesToHex(aes_config.iv)
-            };
-            const encrypted_aes_config = public_key.encrypt(JSON.stringify(aes_config_hex));
-
-            return {
-                encrypted_hex: encrypted_hex,
-                encryption_data: {
-                    encrypted_aes_config: forge.util.bytesToHex(encrypted_aes_config),
-                    public_key_guid: '04624e6be9d37d8bad2f9ccf5c0931d5'
-                }
-            }
-        }
-
-        function validate_file_size(file_input) {
-            let is_valid = true;
-            const max_file_size = $(file_input).data('max_file_size');
-            const file = file_input.files[0];
-            if (max_file_size < file.size) {
-                is_valid = false;
-
-                if ($(file_input).siblings('.file_size_error').length <= 0) {
-                    $('<div class="file_size_error text-danger"></div>').insertAfter($(file_input));
-                }
-                const error = $(file_input).data('max_file_size_error_message');
-                $(file_input).siblings('.file_size_error').html(error);
-                $(file_input).val('');
-            } else {
-                $(file_input).siblings('.file_size_error').remove();
-            }
-
-            return is_valid;
-        }
-
-        function validate_file_extension(file_input) {
-            let is_valid = true;
-            const allowed_extension = $(file_input).data('allowed_extension');
-            const file = file_input.files[0];
-            const type = file.type.split('index.html')[1];
-            if (!allowed_extension.includes(type)) {
-                is_valid = false;
-
-                if ($(file_input).siblings('.file_extension_error').length <= 0) {
-                    $('<div class="file_extension_error text-danger"></div>').insertAfter($(file_input));
-                }
-                const error = $(file_input).data('allowed_extension_error_message');
-                $(file_input).siblings('.file_extension_error').html(error);
-                $(file_input).val('');
-            } else {
-                $(file_input).siblings('.file_extension_error').remove();
-            }
-
-            return is_valid;
-        }
-
-        function listen_user_name_input_on_change(input) {
-            if (input) {
-                input.oninput = function () {
-                    if (this.value.match(/[^a-zA-Z0-9]/g)) {
-                        this.value = this.value.replace(/[^a-zA-Z0-9]/g, '');
-                    }
-                    input.value = input.value.substring(0, 63);
-
-                    if (document.getElementById('display_user_name')) {
-                        document.getElementById('display_user_name').innerHTML = 'https://' + input.value + '.bitcoinwallet.com';
-                    }
-                }
-            }
-        }
+       
 
         $(function () {
             const body = $('body');
@@ -689,89 +573,6 @@ zQIDAQAB
                 $('#side-menu').metisMenu();
             }
 
-            // Move modal to body
-            // Fix Bootstrap backdrop issue with animation.css
-            $('.modal').appendTo('body');
-
-            // Check if sidebar scroll is enabled
-            if (body.hasClass('sidebar-scroll')) {
-                new PerfectScrollbar('#menu', {
-                    wheelSpeed: 0.5,
-                    wheelPropagation: true,
-                    suppressScrollX: true
-                });
-            }
-
-            // handle minimize sidebar menu
-            body.on('click', '.toggle_menu', function (event) {
-                event.preventDefault();
-                $('body').toggleClass('hide-sidebar');
-            });
-
-            body.on('click', '.sidebar_lock_body_backdrop', function (event) {
-                event.preventDefault();
-                $('body').addClass('hide-sidebar');
-            });
-
-            $(window).keydown(function (event) {
-                const should_prevent = $(':focus').closest('form.prevent_submit_on_enter').length > 0;
-                const is_modal_form = $(':focus').closest('form.modal_form').length > 0;
-                if (event.keyCode == 13 && $(event.target)[0] != $("textarea")[0] && (is_modal_form || should_prevent)) {
-                    event.preventDefault();
-                    return false;
-                }
-            });
-
-            body.on('click', '.modal_submit', function () {
-                if ($(this).data('confirmation')) {
-                    if (confirm($(this).data('confirmation'))) {
-                        submit_modal_form($(this));
-                    }
-                } else {
-                    submit_modal_form($(this));
-                }
-            });
-
-            body.on('click', '.close_modal', function (event) {
-                event.preventDefault();
-                $(this).closest('.modal').modal('hide');
-            });
-
-            body.on('change', 'select', function () {
-                stylize_select_placeholder($(this));
-            });
-
-            set_sidebar_default_state();
-            stylize_all_select_placeholder();
-
-            // custom definitian for persian. persian version does not format correctly in streams
-            moment.updateLocale('fa', {
-                relativeTime: {
-                    ss: '%d  ثانیه قبل'
-                },
-            });
-            moment.locale('en');
-
-            $(window).on('scroll resize', function () {
-                update_left_nav_appearance();
-            });
-
-            $(window).on('resize', function () {
-                set_sidebar_default_state();
-            });
-
-            if (typeof (ResizeObserver) === 'function') {
-                let resizeObserver = new ResizeObserver(() => {
-                    update_left_nav_appearance();
-                });
-                resizeObserver.observe($('body')[0]);
-            }
-
-            const menu_animation_time = 300;
-            $(window).on('click', function () {
-                setTimeout(update_left_nav_appearance, menu_animation_time);
-            });
-            setTimeout(update_left_nav_appearance, menu_animation_time);
 
             body.on('click', '.showhide_no_animation', function () {
                 const panel_body = $(this).closest('.hpanel').find('.panel-body');
@@ -908,67 +709,7 @@ zQIDAQAB
             </div>
             <div>
 				
-    <div class="custom_select input-group">
-		            <span class="input-group-addon"><i class="fal fa-language"></i></span>
-			        <select name="select_language" class="form-control h-auto language_select" >
-			                <option class="placeholder" value="">--language--</option>
-				
-			                <option value="49015ffef" selected>english</option>
-				                <option value="e987aba70" >ayisyen</option>
-				                <option value="3149d8e01" >eesti</option>
-				                <option value="01ad5be5c" >español</option>
-				                <option value="c251b5ab4" >bengali</option>
-				                <option value="1ef8f0b1f" >čeština</option>
-				                <option value="0e033c6e9" >italiano</option>
-				                <option value="9c69d12d3" >dansk</option>
-				                <option value="0776fda62" >Ελληνικά</option>
-				                <option value="995d6ba0a" >deutsche</option>
-				                <option value="ba88bb28e" >filipino</option>
-				                <option value="441f09009" >indonesia</option>
-				                <option value="367fe37f5" >islensku</option>
-				                <option value="0c68b8b29" >javanese</option>
-				                <option value="4339f421b" >kannada</option>
-				                <option value="ed0053bc6" >gujarati</option>
-				                <option value="8e727efdf" >français</option>
-				                <option value="a0ba5fe57" >kurdî</option>
-				                <option value="d836cde91" >magyar</option>
-				                <option value="9b0423ac1" >malay</option>
-				                <option value="e84e2b578" >nederlands</option>
-				                <option value="dc5c4f299" >polskie</option>
-				                <option value="6094877ec" >português</option>
-				                <option value="abfc4f1b4" >pусский</option>
-				                <option value="d5f016c0c" >suomalainen</option>
-				                <option value="f8bc06ece" >swahili</option>
-				                <option value="7b34df94f" >türk</option>
-				                <option value="760d77ce0" >український</option>
-				                <option value="84dc74c4c" >tiếng việt</option>
-				                <option value="fc01bfa90" >عربى</option>
-				                <option value="f3cca98d5" >ไทย</option>
-				                <option value="6adbbb718" >中文</option>
-				                <option value="efcc258d6" >עִברִית</option>
-				                <option value="c6fa87b52" >हिंदी</option>
-				                <option value="439e1b03f" >日本語</option>
-				                <option value="94b60b92c" >한국어</option>
-				                <option value="8163c45e1" >മല്യ്മ്</option>
-				                <option value="e3a715eb7" >فارسی</option>
-				                <option value="a27b6c43a" >தமிழ்</option>
-				                <option value="45c8f00f4" >اردو</option>
-				        </select>
-    </div>
-	
-                <script>
-                    $(function () {
-                        $('.language_select').on('change', function () {
-                            const payload = "LsTliD5uHNwJTzGZvRRm_Sw3A1HsH4bpQW3ZGCGkYv9KBk5YXyDphQv75gryE9p4CiAMbJQhEFyLabhvN8pxRg,,";
-                            const data = {
-                                language_guid: $(this).val()
-                            };
-                            loader_show();
-                            send_ajax(payload, data, function (response) {
-                                location.reload();
-                            });
-                        });
-                    });
+    
                 </script>
             </div>
 			    </div>
@@ -1021,26 +762,7 @@ zQIDAQAB
                 </div>
             </div>
 
-            <div class="hpanel col-sm-10 col-centered m-b-md">
-                <div class="hbuilt section_subtitle text-center m-b-0">
-                    <div class="labeled break-all">
-						bitcoinwallet.com/main/ addresses                    </div>
-                </div>
-                <div class="panel-body">
-                    <div class="table-responsive">
-						
-<table class="table table-striped table-bordered table-hover m-b-0 user_profile_public_address vertical_align_middle">
-	</table>
-
-                    </div>
-                </div>
-            </div>
-
-
-            <div class="user_profile_external_address_container">
-				            </div>
-        </div>
-    </div>
+            
 
 	
 	
@@ -1065,30 +787,7 @@ zQIDAQAB
 </svg>                </a>
             </div>
 
-            <div class="disclaimer">
-                <div class="disclaimer_text">
-					all blockchain and pricing data on bitcoinwallet.com is provided “as-is” and is to be used for entertainment purposes only, and should not be used or relied on in any way to influence or direct trading or investment decisions or funds availaibility or funds value. neither bitcoinwallet.com, nor its employees, contractors, owners, operators or data sources verify or are responsible for the accuracy, availability or timeliness of prices, volumes, blocks, addresses, transactions or any other content that appears on the site and your use of or reliance on any such content is at your own risk. this site contains affiliate links, and we may be compensated if you make a purchase after clicking on the links.                </div>
-
-                <div class="terms_and_policy">
-                    <div>
-                        <a href="https://bitcoinwallet.com/#/terms.php" target="_blank">terms of use</a>
-                    </div>
-                </div>
-                <div class="terms_and_policy">
-                    <div>
-                        <a href="https://bitcoinwallet.com/#/privacy.php" target="_blank">privacy policy</a>
-                    </div>
-                </div>
-
-                <div class="copyright_label">
-                    <span>copyright </span><i class="fal fa-copyright"></i><span> 2023</span>
-                    <span> bitcoinwallet.com</span>
-                </div>
-            </div>
-
-            <div class="social font_size_h4">
-                <a href="https://twitter.com/#/bitcoinwaIIet" target="_blank"><i class="fab fa-twitter"></i></a>
-            </div>
+           
         </div>
     </footer>
 
